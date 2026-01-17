@@ -1,0 +1,29 @@
+{
+  "name": "authservice",
+  "version": "1.0.0",
+  "description": "Authentication Service for Real Time Chatting Application",
+  "homepage": "https://github.com/SamarthM0419/Real_Time_Chatting_Backend#readme",
+  "bugs": {
+    "url": "https://github.com/SamarthM0419/Real_Time_Chatting_Backend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SamarthM0419/Real_Time_Chatting_Backend.git"
+  },
+  "license": "ISC",
+  "author": "Samarth , Suhaas , Tejas",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/app.js",
+    "start": "node src/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "mongoose": "^8.21.0",
+    "nodemon": "^3.1.11"
+  }
+}
