@@ -1,5 +1,16 @@
+const rateLimit = require("express-rate-limit");
 const jwt = require("jsonwebtoken");
 const Auth = require("../models/authModel");
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: "Too many login attempts. Try again after 15 minutes.",
+  },
+});
 
 const userAuth = async (req, res, next) => {
   try {
@@ -12,8 +23,9 @@ const userAuth = async (req, res, next) => {
     const { _id } = decodedObj;
 
     const user = await Auth.findById(_id).select("-password");
+
     if (!user) {
-      return res.status(404).json("message : User not Found");
+      return res.status(404).json({ error: "User not found" });
     }
     req.user = user;
     next();
@@ -22,4 +34,4 @@ const userAuth = async (req, res, next) => {
   }
 };
 
-module.exports = { userAuth };
+module.exports = { loginLimiter, userAuth };
