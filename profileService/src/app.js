@@ -11,16 +11,10 @@ const connectProfileDb = require("./config/profileDatabase");
 
 app.use("/", profileRouter);
 
-connectProfileDb().then(() => {
-    console.log("Database connection established for Profile Service.");
-
-    app.use("/", profileRouter);
-
-    app.listen(5001, () => {
-      console.log("Profile Service is listening on port 5001");
+connectProfileDb()
+  .then(() => {
+    app.listen(process.env.PORT, () => {
+      console.log(`Profile Service running on ${process.env.PORT}`);
     });
   })
-  .catch((err) => {
-    console.error("Database cannot be connected");
-    console.error(err);
-  });
+  .catch((err) => console.log("Profile DB Connection Failed", err.message));

@@ -1,16 +1,18 @@
-const jwt=require("jsonwebtoken");
-const userAuth=async(req,res,next)=>{
-    try{
-        const {token}=req.cookies;
-        if(!token){
-            return res.status(401).json({message:"Token Expired, please login again"});
-        }
-        const decodeObj=await jwt.verify(token, process.env.JWT_SECRET);
-        req.user=decodeObj;
-        next();
+const jwt = require("jsonwebtoken");
+const userAuth = async (req, res, next) => {
+  try {
+    const { token } = req.cookies;
+    if (!token) {
+      return res
+        .status(401)
+        .json({ message: "Token Expired, please login again" });
     }
-    catch(err){
-        return res.status(401).json({error:"Invalid or expired token"});
-    }
-    };
-module.exports={userAuth};
+    const decodeObj = await jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decodeObj;
+    console.log(decodedObjj);
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+};
+module.exports = { userAuth };
