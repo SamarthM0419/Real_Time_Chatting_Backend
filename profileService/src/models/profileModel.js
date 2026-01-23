@@ -32,6 +32,9 @@ const profileSchema = new mongoose.Schema(
         }
       },
     },
+    age: {
+      type: Number,
+    },
     gender: {
       type: String,
       required: true,

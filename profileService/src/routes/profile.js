@@ -24,6 +24,7 @@ profileRouter.patch("/patchProfile", userAuth, async (req, res) => {
       "about",
       "profilePic",
       "gender",
+      "age",
     ];
     const isUpdateAllowed = Object.keys(req.body).every((update) =>
       ALLOWES_UPDATES.includes(update),
