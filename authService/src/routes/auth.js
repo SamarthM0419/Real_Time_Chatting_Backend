@@ -5,6 +5,7 @@ const Auth = require("../models/authModel");
 const authRouter = express.Router();
 const validator = require("validator");
 const { loginLimiter, userAuth } = require("../middleware/authMiddleware");
+const { publishEvent } = require("../utils/rabbitMQ/publisher");
 
 authRouter.post("/signup", async (req, res) => {
   try {
