@@ -3,7 +3,7 @@ const amqp = require("amqplib");
 let connection;
 let channel;
 
-async function createRabbitMQ() {
+async function connectRabbitMQ() {
   if (channel) {
     return channel;
   }
@@ -42,6 +42,6 @@ function getChannel() {
 }
 
 module.exports = {
-  createRabbitMQ,
+  connectRabbitMQ,
   getChannel,
 };
