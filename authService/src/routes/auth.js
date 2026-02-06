@@ -28,7 +28,7 @@ authRouter.post("/signup", async (req, res) => {
 
     const savedUser = await user.save();
     const token = await savedUser.getJWT();
-
+    
     try {
       await publishEvent("auth.user.created", {
         userId: savedUser._id.toString(),
@@ -133,6 +133,26 @@ authRouter.patch("/changePassword", userAuth, async (req, res) => {
     res.status(500).json({
       message: "Internal Server Error: " + err.message,
     });
+  }
+});
+
+authRouter.get("/getUserByEmail", async (req, res) => {
+  try {
+    const { emailId } = req.query;
+    
+    if (!emailId) {
+      return res.status(400).json({ message: "emailId is required" });
+    }
+
+    const user = await Auth.findOne({ emailId: emailId.toLowerCase() });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ userId: user._id });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 });
 
