@@ -4,10 +4,10 @@ const Request = require("../models/requestModel");
 const { userAuth } = require("../middleware/requestMiddleware");
 const validator = require("validator");
 
-requestRouter.post("/send", userAuth, async (req, res) => {
+requestRouter.post("/request", userAuth, async (req, res) => {
   try {
     const { targetEmail } = req.body;
-    const fromUserId = req.user._id;
+    const currentUserId = req.user._id;
 
     if (!targetEmail) {
       return res.status(400).json({ message: "targetEmail is required" });
@@ -17,20 +17,7 @@ requestRouter.post("/send", userAuth, async (req, res) => {
       return res.status(400).json({ message: "Invalid email address" });
     }
 
-    const existingRequest = await Request.findOne({
-      fromUserId,
-      targetEmail,
-      status: "pending",
-    });
-
-    if (existingRequest) {
-      return res
-        .status(400)
-        .json({ message: "Request already sent to this email" });
-    }
-
-    let toUserId = null;
-    let userExists = false;
+    let targetUserId = null;
 
     try {
       const response = await fetch(
@@ -38,38 +25,138 @@ requestRouter.post("/send", userAuth, async (req, res) => {
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
-        },
+        }
       );
 
       if (response.ok) {
         const data = await response.json();
-        toUserId = data.userId;
-        userExists = true;
+        targetUserId = data.userId;
       } else {
-        console.log(
-          `[RequestService] User with email ${targetEmail} not found. Invite flow to be implemented.`,
-        );
+        return res.status(404).json({
+          message: "User with this email doesn't exist",
+        });
       }
     } catch (fetchErr) {
-      console.log(
-        `[RequestService] Could not reach Auth Service: ${fetchErr.message}`,
-      );
+      return res.status(500).json({
+        message: "Could not reach Auth Service",
+        error: fetchErr.message,
+      });
     }
 
-    const request = new Request({
-      fromUserId,
-      toUserId,
-      targetEmail,
+    if (currentUserId.toString() === targetUserId.toString()) {
+      return res.status(400).json({
+        message: "You cannot send a request to yourself",
+      });
+    }
+
+    const existingConnection = await Request.findOne({
+      $or: [
+        { fromUserId: currentUserId, toUserId: targetUserId },
+        { fromUserId: targetUserId, toUserId: currentUserId },
+      ],
+      status: "accepted",
+    });
+
+    if (existingConnection) {
+      return res.status(400).json({
+        message: "You are already connected with this user",
+      });
+    }
+
+    const outgoingRequest = await Request.findOne({
+      fromUserId: currentUserId,
+      toUserId: targetUserId,
       status: "pending",
     });
 
-    const savedRequest = await request.save();
+    if (outgoingRequest) {
+      return res.status(400).json({
+        message: "You already have a pending request to this user",
+      });
+    }
 
-    res.status(201).json({
-      message: userExists
-        ? "Request sent successfully"
-        : "User not found on platform. Request saved — will be delivered when they join.",
-      data: savedRequest,
+    const incomingRequest = await Request.findOne({
+      fromUserId: targetUserId,
+      toUserId: currentUserId,
+      status: "pending",
+    });
+
+    if (incomingRequest) {
+      return res.status(400).json({
+        message:
+          "You have a pending request from this user. Use PATCH /request/requestId to respond",
+        requestId: incomingRequest._id,
+      });
+    }
+
+    const newRequest = new Request({
+      fromUserId: currentUserId,
+      toUserId: targetUserId,
+      targetEmail: targetEmail.toLowerCase(),
+      status: "pending",
+    });
+
+    await newRequest.save();
+
+    return res.status(201).json({
+      message: "Request sent successfully",
+      data: newRequest,
+    });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+requestRouter.patch("/request/:requestId", userAuth, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { status } = req.body;
+    const currentUserId = req.user._id;
+
+    if (!status) {
+      return res.status(400).json({ message: "status is required" });
+    }
+
+    if (!["accepted", "rejected"].includes(status)) {
+      return res.status(400).json({
+        message: "status must be 'accepted' or 'rejected'",
+      });
+    }
+
+    const request = await Request.findOne({
+      _id: requestId,
+      toUserId: currentUserId,
+      status: "pending",
+    });
+
+    if (!request) {
+      return res.status(404).json({
+        message: "Request not found or already responded",
+      });
+    }
+
+    request.status = status;
+    await request.save();
+
+    return res.status(200).json({
+      message: `Request ${status} successfully`,
+      data: request,
+    });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+requestRouter.get("/sent", userAuth, async (req, res) => {
+  try {
+    const requests = await Request.find({
+      fromUserId: req.user._id,
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      message: "Sent requests retrieved successfully",
+      data: requests,
+      count: requests.length,
     });
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -81,97 +168,15 @@ requestRouter.get("/received", userAuth, async (req, res) => {
     const requests = await Request.find({
       toUserId: req.user._id,
       status: "pending",
-    });
-
-    res.status(200).json({ data: requests });
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-});
-
-requestRouter.get("/sent", userAuth, async (req, res) => {
-  try {
-    const requests = await Request.find({
-      fromUserId: req.user._id,
-    });
-
-    res.status(200).json({ data: requests });
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-});
-
-
-requestRouter.patch("/respond/:requestId", userAuth, async (req, res) => {
-  try {
-    const { status } = req.body;
-    const { requestId } = req.params;
-
-    if (!["accepted", "rejected"].includes(status)) {
-      return res
-        .status(400)
-        .json({ message: "Status must be 'accepted' or 'rejected'" });
-    }
-
-    const request = await Request.findOne({
-      _id: requestId,
-      toUserId: req.user._id,
-      status: "pending",
-    });
-
-    if (!request) {
-      return res
-        .status(404)
-        .json({ message: "Request not found or already responded" });
-    }
-
-    request.status = status;
-    await request.save();
+    }).sort({ createdAt: -1 });
 
     res.status(200).json({
-      message: `Request ${status} successfully`,
-      data: request,
+      message: "Received requests retrieved successfully",
+      data: requests,
+      count: requests.length,
     });
   } catch (err) {
     res.status(400).json({ message: err.message });
-  }
-});
-
-
-requestRouter.post("/userCreated", async (req, res) => {
-  try {
-    const { userId, emailId } = req.body;
-
-    if (!userId || !emailId) {
-      return res
-        .status(400)
-        .json({ message: "userId and emailId are required" });
-    }
-
-    const result = await Request.updateMany(
-      {
-        targetEmail: emailId.toLowerCase(),
-        toUserId: null,
-        status: "pending",
-      },
-      {
-        $set: { toUserId: userId },
-      }
-    );
-
-    if (result.modifiedCount > 0) {
-      console.log(
-        `[RequestService] USER_CREATED: Updated ${result.modifiedCount} pending request(s) for ${emailId}`
-      );
-    }
-
-    res.status(200).json({
-      message: `Updated ${result.modifiedCount} pending request(s)`,
-      updated: result.modifiedCount,
-    });
-  } catch (err) {
-    console.error("[RequestService] Error in userCreated:", err.message);
-    res.status(500).json({ message: err.message });
   }
 });
 
