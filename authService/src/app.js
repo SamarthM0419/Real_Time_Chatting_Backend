@@ -2,6 +2,7 @@ const express = require("express");
 const connectAuthDB = require("./config/authDatabase");
 require("dotenv").config();
 const cookieParser = require("cookie-parser");
+const { connectRabbitMQ } = require("../src/utils/rabbitMQ/connection");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -11,6 +12,10 @@ app.use(cookieParser());
 const authRouter = require("./routes/auth");
 
 app.use("/", authRouter);
+
+(async () => {
+  await connectRabbitMQ();
+})();
 
 connectAuthDB()
   .then(() => {
