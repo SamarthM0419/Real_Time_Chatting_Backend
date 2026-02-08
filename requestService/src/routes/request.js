@@ -55,7 +55,7 @@ requestRouter.post("/invite/send", userAuth, async (req, res) => {
   }
 });
 
-requestRouter.patch("/request/:requestId", userAuth, async (req, res) => {
+requestRouter.patch("/respond/:requestId", userAuth, async (req, res) => {
   try {
     const { requestId } = req.params;
     const { status } = req.body;
@@ -71,20 +71,21 @@ requestRouter.patch("/request/:requestId", userAuth, async (req, res) => {
       });
     }
 
-    const request = await Request.findOne({
-      _id: requestId,
-      toUserId: currentUserId,
-      status: "pending",
-    });
+    const request = await Request.findOneAndUpdate(
+      {
+        _id: requestId,
+        toUserId: currentUserId,
+        status: "pending",
+      },
+      { status },
+      { new: true },
+    );
 
     if (!request) {
       return res.status(404).json({
         message: "Request not found or already responded",
       });
     }
-
-    request.status = status;
-    await request.save();
 
     return res.status(200).json({
       message: `Request ${status} successfully`,
@@ -95,7 +96,7 @@ requestRouter.patch("/request/:requestId", userAuth, async (req, res) => {
   }
 });
 
-requestRouter.get("/sent", userAuth, async (req, res) => {
+requestRouter.get("/invites/sent", userAuth, async (req, res) => {
   try {
     const requests = await Request.find({
       fromUserId: req.user._id,
@@ -111,7 +112,7 @@ requestRouter.get("/sent", userAuth, async (req, res) => {
   }
 });
 
-requestRouter.get("/received", userAuth, async (req, res) => {
+requestRouter.get("/invites/received", userAuth, async (req, res) => {
   try {
     const requests = await Request.find({
       toUserId: req.user._id,
