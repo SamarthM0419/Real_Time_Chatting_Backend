@@ -22,7 +22,7 @@ async function startRequestService() {
     
     await consumeAuthUserCreated(channel);
 
-    app.listen(process.env.PORT, () => {
+    app.listen(process.env.REQUEST_SERVICE_PORT, () => {
       console.log(
         `Request Service running on ${process.env.REQUEST_SERVICE_PORT}`,
       );
