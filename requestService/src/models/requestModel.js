@@ -1,67 +1,54 @@
 const mongoose = require("mongoose");
-const validator = require("validator");
 
 const requestSchema = new mongoose.Schema(
   {
     fromUserId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Auth",
       required: true,
     },
+
     toUserId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Auth",
-      default: null,
-    },
-    targetEmail: {
-      type: String,
       required: true,
-      trim: true,
-      lowercase: true,
-      validate(value) {
-        if (!validator.isEmail(value)) {
-          throw new Error("Invalid Email Address");
-        }
-      },
     },
+
     status: {
       type: String,
       enum: ["pending", "accepted", "rejected"],
       default: "pending",
     },
+
     message: {
       type: String,
       maxLength: 200,
       default: "Hi! Let's connect on chat.",
     },
-    emailSent: {
+
+    inviteSent: {
       type: Boolean,
       default: false,
     },
-    inviteSent: {
+
+    emailSent: {
       type: Boolean,
       default: false,
     },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-requestSchema.index({ fromUserId: 1, targetEmail: 1, status: 1 });
+requestSchema.index({ fromUserId: 1, toUserId: 1 }, { unique: true });
 
-requestSchema.methods.isPending = function () {
-  return this.status === "pending";
-};
-
-requestSchema.methods.acceptRequest = async function () {
+requestSchema.methods.accept = function () {
   this.status = "accepted";
-  return await this.save();
+  return this.save();
 };
 
-requestSchema.methods.rejectRequest = async function () {
+requestSchema.methods.reject = function () {
   this.status = "rejected";
-  return await this.save();
+  return this.save();
 };
 
 module.exports = mongoose.model("Request", requestSchema);

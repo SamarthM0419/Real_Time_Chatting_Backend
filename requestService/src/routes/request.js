@@ -2,108 +2,56 @@ const express = require("express");
 const requestRouter = express.Router();
 const Request = require("../models/requestModel");
 const { userAuth } = require("../middleware/requestMiddleware");
-const validator = require("validator");
 
-requestRouter.post("/request", userAuth, async (req, res) => {
+requestRouter.post("/invite/send", userAuth, async (req, res) => {
   try {
-    const { targetEmail } = req.body;
-    const currentUserId = req.user._id;
+    const fromUserId = req.user._id;
+    const { toEmail } = req.body;
 
-    if (!targetEmail) {
-      return res.status(400).json({ message: "targetEmail is required" });
+    if (!toEmail) {
+      return res.status(400).json({ message: "toEmail is required" });
     }
 
-    if (!validator.isEmail(targetEmail)) {
-      return res.status(400).json({ message: "Invalid email address" });
+    const targetUser = await UserSchema.findOne({
+      email: toEmail.toLowerCase(),
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found!" });
     }
 
-    let targetUserId = null;
+    const toUserId = targetUser.userId;
 
-    try {
-      const response = await fetch(
-        `${process.env.AUTH_SERVICE_URL}/getUserByEmail?emailId=${targetEmail}`,
-        {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        targetUserId = data.userId;
-      } else {
-        return res.status(404).json({
-          message: "User with this email doesn't exist",
-        });
-      }
-    } catch (fetchErr) {
-      return res.status(500).json({
-        message: "Could not reach Auth Service",
-        error: fetchErr.message,
-      });
+    if (fromUserId.equals(toUserId)) {
+      return res
+        .status(400)
+        .json({ message: "You cannot send request to yourself" });
     }
 
-    if (currentUserId.toString() === targetUserId.toString()) {
-      return res.status(400).json({
-        message: "You cannot send a request to yourself",
-      });
-    }
-
-    const existingConnection = await Request.findOne({
+    const existingInvite = await Request.findOne({
       $or: [
-        { fromUserId: currentUserId, toUserId: targetUserId },
-        { fromUserId: targetUserId, toUserId: currentUserId },
+        { fromUserId, toUserId },
+        { fromUserId: toUserId, toUserId: fromUserId },
       ],
-      status: "accepted",
     });
 
-    if (existingConnection) {
-      return res.status(400).json({
-        message: "You are already connected with this user",
-      });
+    if (existingInvite) {
+      return res.status(400).json({ message: "Invite request already exists" });
     }
 
-    const outgoingRequest = await Request.findOne({
-      fromUserId: currentUserId,
-      toUserId: targetUserId,
+    const data = await Request.create({
+      fromUserId,
+      toUserId,
       status: "pending",
     });
 
-    if (outgoingRequest) {
-      return res.status(400).json({
-        message: "You already have a pending request to this user",
-      });
-    }
-
-    const incomingRequest = await Request.findOne({
-      fromUserId: targetUserId,
-      toUserId: currentUserId,
-      status: "pending",
+    res.status(201).json({
+      message: "Invite sent successfully",
+      data,
     });
-
-    if (incomingRequest) {
-      return res.status(400).json({
-        message:
-          "You have a pending request from this user. Use PATCH /request/requestId to respond",
-        requestId: incomingRequest._id,
-      });
-    }
-
-    const newRequest = new Request({
-      fromUserId: currentUserId,
-      toUserId: targetUserId,
-      targetEmail: targetEmail.toLowerCase(),
-      status: "pending",
-    });
-
-    await newRequest.save();
-
-    return res.status(201).json({
-      message: "Request sent successfully",
-      data: newRequest,
-    });
+    console.log(res);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 
