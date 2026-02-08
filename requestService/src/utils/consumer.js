@@ -5,6 +5,7 @@ const consumeAuthUserCreated = async (channel) => {
   const QUEUE = "request.auth.user.created";
   const ROUTING_KEY = "auth.user.created";
 
+  await channel.assertExchange(EXCHANGE, "topic", { durable: true });
   await channel.assertQueue(QUEUE, { durable: true });
   await channel.bindQueue(QUEUE, EXCHANGE, ROUTING_KEY);
 

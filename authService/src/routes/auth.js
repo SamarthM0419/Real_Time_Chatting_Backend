@@ -28,7 +28,7 @@ authRouter.post("/signup", async (req, res) => {
 
     const savedUser = await user.save();
     const token = await savedUser.getJWT();
-    
+
     try {
       await publishEvent("auth.user.created", {
         userId: savedUser._id.toString(),
@@ -70,7 +70,7 @@ authRouter.post("/login", loginLimiter, async (req, res) => {
     if (isPasswordValid) {
       const token = await user.getJWT();
       res.cookie("token", token, {
-        expires: new Date(Date.now() + 24 * 3600000),
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
       });
     }
 
@@ -139,7 +139,7 @@ authRouter.patch("/changePassword", userAuth, async (req, res) => {
 authRouter.get("/getUserByEmail", async (req, res) => {
   try {
     const { emailId } = req.query;
-    
+
     if (!emailId) {
       return res.status(400).json({ message: "emailId is required" });
     }

@@ -2,6 +2,7 @@ const express = require("express");
 const requestRouter = express.Router();
 const Request = require("../models/requestModel");
 const { userAuth } = require("../middleware/requestMiddleware");
+const UserSchema = require("../models/userModel");
 
 requestRouter.post("/invite/send", userAuth, async (req, res) => {
   try {
@@ -12,17 +13,23 @@ requestRouter.post("/invite/send", userAuth, async (req, res) => {
       return res.status(400).json({ message: "toEmail is required" });
     }
 
-    const targetUser = await UserSchema.findOne({
-      email: toEmail.toLowerCase(),
-    });
+    const normalizedEmail = toEmail.trim().toLowerCase();
 
+    const targetUser = await UserSchema.findOne({
+      email: normalizedEmail,
+    });
+    console.log(targetUser);
     if (!targetUser) {
       return res.status(404).json({ message: "User not found!" });
     }
 
+    if (!targetUser.userId) {
+      return res.status(500).json({ message: "User data not synced yet" });
+    }
+
     const toUserId = targetUser.userId;
 
-    if (fromUserId.equals(toUserId)) {
+    if (String(fromUserId) === String(toUserId)) {
       return res
         .status(400)
         .json({ message: "You cannot send request to yourself" });
@@ -45,13 +52,12 @@ requestRouter.post("/invite/send", userAuth, async (req, res) => {
       status: "pending",
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Invite sent successfully",
       data,
     });
-    console.log(res);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: err.message });
   }
 });
 
