@@ -4,6 +4,8 @@ const cookieParser = require("cookie-parser");
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+const { connectRabbitMQ } = require("./utils/rabbitmq/connection");
+const { consumeAuthUserCreated } = require("./utils/rabbitmq/consumer");
 
 const profileRouter = require("./routes/profile");
 
@@ -11,10 +13,21 @@ const connectProfileDb = require("./config/profileDatabase");
 
 app.use("/", profileRouter);
 
-connectProfileDb()
-  .then(() => {
+async function startProfileService() {
+  try {
+    await connectProfileDb();
+
+    await connectRabbitMQ();
+
+    await consumeAuthUserCreated();
+
     app.listen(process.env.PORT, () => {
       console.log(`Profile Service running on ${process.env.PORT}`);
     });
-  })
-  .catch((err) => console.log("Profile DB Connection Failed", err.message));
+  } catch (err) {
+    console.error("Profile Service startup failed", err);
+    process.exit(1);
+  }
+}
+
+startProfileService();

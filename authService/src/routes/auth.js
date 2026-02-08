@@ -5,6 +5,7 @@ const Auth = require("../models/authModel");
 const authRouter = express.Router();
 const validator = require("validator");
 const { loginLimiter, userAuth } = require("../middleware/authMiddleware");
+const { publishEvent } = require("../utils/rabbitMQ/publisher");
 
 authRouter.post("/signup", async (req, res) => {
   try {
@@ -13,7 +14,7 @@ authRouter.post("/signup", async (req, res) => {
 
     const existingUser = await Auth.findOne({ emailId });
     if (existingUser) {
-      return res.status(404).json({ message: "Email Already Present" });
+      return res.status(404).json({ message: "Email Already Exists" });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -28,8 +29,20 @@ authRouter.post("/signup", async (req, res) => {
     const savedUser = await user.save();
     const token = await savedUser.getJWT();
 
+    try {
+      await publishEvent("auth.user.created", {
+        userId: savedUser._id.toString(),
+        email: savedUser.emailId,
+        firstName: savedUser.firstName,
+        lastName: savedUser.lastName,
+        createdAt: savedUser.createdAt,
+      });
+    } catch (err) {
+      console.error("Event publish failed", err.message);
+    }
+
     res.cookie("token", token, {
-      expires: new Date(Date.now() + 24 * 3600000),
+      expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 
     res
@@ -57,7 +70,7 @@ authRouter.post("/login", loginLimiter, async (req, res) => {
     if (isPasswordValid) {
       const token = await user.getJWT();
       res.cookie("token", token, {
-        expires: new Date(Date.now() + 24 * 3600000),
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
       });
     }
 
@@ -123,6 +136,24 @@ authRouter.patch("/changePassword", userAuth, async (req, res) => {
   }
 });
 
+authRouter.get("/getUserByEmail", async (req, res) => {
+  try {
+    const { emailId } = req.query;
 
+    if (!emailId) {
+      return res.status(400).json({ message: "emailId is required" });
+    }
+
+    const user = await Auth.findOne({ emailId: emailId.toLowerCase() });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ userId: user._id });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
 
 module.exports = authRouter;
