@@ -21,8 +21,8 @@ async function startProfileService() {
 
     await consumeAuthUserCreated();
 
-    app.listen(process.env.PORT, () => {
-      console.log(`Profile Service running on ${process.env.PORT}`);
+    app.listen(process.env.PROFILE_SERVICE_PORT, () => {
+      console.log(`Profile Service running on ${process.env.PROFILE_SERVICE_PORT}`);
     });
   } catch (err) {
     console.error("Profile Service startup failed", err);
