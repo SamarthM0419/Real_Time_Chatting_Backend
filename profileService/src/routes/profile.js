@@ -3,6 +3,7 @@ const profileRouter = express.Router();
 const Profile = require("../models/profileModel");
 const { userAuth } = require("../middleware/profileMiddleware");
 const { redisClient } = require("../utils/redis/redisClient");
+const { uploadProfilePhoto, uploadProfilePhotoFromUrl } = require("../utils/cloudinary/uploadImage");
 
 profileRouter.get("/getProfile", userAuth, async (req, res) => {
   try {
@@ -35,7 +36,7 @@ profileRouter.get("/getProfile", userAuth, async (req, res) => {
 
 profileRouter.patch("/patchProfile", userAuth, async (req, res) => {
   try {
-    const ALLOWES_UPDATES = [
+    const ALLOWED_UPDATES = [
       "firstName",
       "lastName",
       "about",
@@ -43,12 +44,38 @@ profileRouter.patch("/patchProfile", userAuth, async (req, res) => {
       "gender",
       "age",
     ];
+
     const isUpdateAllowed = Object.keys(req.body).every((update) =>
-      ALLOWES_UPDATES.includes(update),
+      ALLOWED_UPDATES.includes(update),
     );
 
     if (!isUpdateAllowed) {
       throw new Error("Update not allowed");
+    }
+
+    if (req.body.profilePic) {
+      const { profilePic } = req.body;
+
+      if (profilePic.startsWith("data:image")) {
+        const cloudinaryUrl = await uploadProfilePhoto(
+          profilePic,
+          req.user._id,
+        );
+        req.body.profilePic = cloudinaryUrl;
+      }
+
+      else if (profilePic.startsWith("http://") || profilePic.startsWith("https://")) {
+        const cloudinaryUrl = await uploadProfilePhotoFromUrl(
+          profilePic,
+          req.user._id,
+        );
+        req.body.profilePic = cloudinaryUrl;
+      }
+
+      else if (profilePic.includes("cloudinary.com")) {
+      } else {
+        throw new Error("Invalid profile picture format");
+      }
     }
 
     const profile = await Profile.findOneAndUpdate(

@@ -24,6 +24,8 @@ async function startProfileService() {
 
     await consumeAuthUserCreated();
 
+    require("./config/cloudinaryConfig");
+
     app.listen(process.env.PROFILE_SERVICE_PORT, () => {
       console.log(
         `Profile Service running on ${process.env.PROFILE_SERVICE_PORT}`,
