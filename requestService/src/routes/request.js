@@ -3,6 +3,7 @@ const requestRouter = express.Router();
 const Request = require("../models/requestModel");
 const { userAuth } = require("../middleware/requestMiddleware");
 const UserSchema = require("../models/userModel");
+const { redisClient } = require("../utils/redisClient");
 
 requestRouter.post("/invite/send", userAuth, async (req, res) => {
   try {
@@ -104,14 +105,36 @@ requestRouter.patch("/respond/:requestId", userAuth, async (req, res) => {
 
 requestRouter.get("/invites/sent", userAuth, async (req, res) => {
   try {
+    const userId = req.user._id.toString();
+
+    const cacheKey = `sentRequest:${userId}`;
+
+    const cachedData = await redisClient.get(cacheKey);
+
+    if (cachedData) {
+      return res.status(200).json({
+        data: JSON.parse(cachedData),
+        source: "cache",
+      });
+    }
+
     const requests = await Request.find({
       fromUserId: req.user._id,
     }).sort({ createdAt: -1 });
 
-    res.status(200).json({
+    const responseData = {
       message: "Sent requests retrieved successfully",
       data: requests,
       count: requests.length,
+    };
+
+    await redisClient.set(cacheKey, JSON.stringify(responseData), {
+      Ex: 600,
+    });
+
+    res.status(200).json({
+      ...responseData,
+      source: "database",
     });
   } catch (err) {
     res.status(400).json({ message: err.message });

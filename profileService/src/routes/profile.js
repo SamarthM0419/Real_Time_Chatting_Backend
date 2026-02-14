@@ -11,7 +11,7 @@ profileRouter.get("/getProfile", userAuth, async (req, res) => {
     const cacheKey = `profile:${userId}`;
 
     const cachedProfile = await redisClient.get(cacheKey);
-    if (cachedKey) {
+    if (cachedProfile) {
       return res.status(200).json({
         data: JSON.parse(cachedProfile),
         source: "cache",
@@ -24,7 +24,7 @@ profileRouter.get("/getProfile", userAuth, async (req, res) => {
       return res.status(404).json({ message: "Profile not found" });
     }
 
-    await redisClient.set(cacheKey, JSON.stringfy(profile), {
+    await redisClient.set(cacheKey, JSON.stringify(profile), {
       EX: 600,
     });
     res.status(200).json({ data: profile, source: "database" });
