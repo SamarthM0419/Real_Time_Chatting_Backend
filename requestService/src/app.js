@@ -4,6 +4,7 @@ const cookieParser = require("cookie-parser");
 const connectRequestDb = require("./config/requestDatabase");
 const { connectRabbitMQ } = require("./utils/connection");
 const { consumeAuthUserCreated } = require("./utils/consumer");
+const { connectRedis } = require("./utils/redisClient");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -18,8 +19,10 @@ async function startRequestService() {
   try {
     await connectRequestDb();
 
+    await connectRedis();
+
     const channel = await connectRabbitMQ();
-    
+
     await consumeAuthUserCreated(channel);
 
     app.listen(process.env.REQUEST_SERVICE_PORT, () => {

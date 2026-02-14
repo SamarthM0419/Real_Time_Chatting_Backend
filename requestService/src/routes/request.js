@@ -3,6 +3,7 @@ const requestRouter = express.Router();
 const Request = require("../models/requestModel");
 const { userAuth } = require("../middleware/requestMiddleware");
 const UserSchema = require("../models/userModel");
+const { redisClient } = require("../utils/redisClient");
 
 requestRouter.post("/invite/send", userAuth, async (req, res) => {
   try {
@@ -104,14 +105,36 @@ requestRouter.patch("/respond/:requestId", userAuth, async (req, res) => {
 
 requestRouter.get("/invites/sent", userAuth, async (req, res) => {
   try {
+    const userId = req.user._id.toString();
+
+    const cacheKey = `sentRequest:${userId}`;
+
+    const cachedData = await redisClient.get(cacheKey);
+
+    if (cachedData) {
+      return res.status(200).json({
+        data: JSON.parse(cachedData),
+        source: "cache",
+      });
+    }
+
     const requests = await Request.find({
       fromUserId: req.user._id,
     }).sort({ createdAt: -1 });
 
-    res.status(200).json({
+    const responseData = {
       message: "Sent requests retrieved successfully",
       data: requests,
       count: requests.length,
+    };
+
+    await redisClient.set(cacheKey, JSON.stringify(responseData), {
+      Ex: 600,
+    });
+
+    res.status(200).json({
+      ...responseData,
+      source: "database",
     });
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -120,19 +143,89 @@ requestRouter.get("/invites/sent", userAuth, async (req, res) => {
 
 requestRouter.get("/invites/received", userAuth, async (req, res) => {
   try {
+    const userId = req.user._id.toString();
+
+    const cacheKey = `recievedRequest:${userId}`;
+
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      return res.status(200).json({
+        data: JSON.parse(cachedData),
+        source: "cache",
+      });
+    }
+
     const requests = await Request.find({
       toUserId: req.user._id,
       status: "pending",
     }).sort({ createdAt: -1 });
 
-    res.status(200).json({
-      message: "Received requests retrieved successfully",
+    const responseData = {
+      message: "Receieved requests retrieved successfully",
       data: requests,
       count: requests.length,
+    };
+
+    await redisClient.set(cacheKey, JSON.stringify(responseData), {
+      Ex: 600,
+    });
+
+    res.status(200).json({
+      ...responseData,
+      source: "database",
     });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 });
+
+requestRouter.delete(
+  "/cancel/:requestId",
+  userAuth,
+  async (req, res) => {
+    try {
+      const { requestId } = req.params;
+      const userId = req.user._id.toString();
+
+      const request = await Request.findById(requestId);
+
+      if (!request) {
+        return res.status(404).json({
+          message: "Request not found",
+        });
+      }
+
+      if (request.fromUserId.toString() !== userId) {
+        return res.status(403).json({
+          message: "You are not allowed to cancel this request",
+        });
+      }
+
+      if (request.status !== "pending") {
+        return res.status(400).json({
+          message: "Only pending requests can be cancelled",
+        });
+      }
+
+      await request.deleteOne();
+
+
+      await redisClient.del(`sentRequests:${userId}`);
+      await redisClient.del(
+        `receivedRequests:${request.toUserId.toString()}`
+      );
+
+      res.status(200).json({
+        message: "Request cancelled successfully",
+      });
+
+    } catch (err) {
+      res.status(400).json({
+        message: err.message,
+      });
+    }
+  }
+);
+
 
 module.exports = requestRouter;

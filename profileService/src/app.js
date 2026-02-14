@@ -6,6 +6,8 @@ app.use(express.json());
 app.use(cookieParser());
 const { connectRabbitMQ } = require("./utils/rabbitmq/connection");
 const { consumeAuthUserCreated } = require("./utils/rabbitmq/consumer");
+const { connectRedis } = require("./utils/redis/redisClient");
+
 const profileRouter = require("./routes/profile");
 
 const connectProfileDb = require("./config/profileDatabase");
@@ -16,6 +18,8 @@ async function startProfileService() {
   try {
     await connectProfileDb();
 
+    await connectRedis();
+
     await connectRabbitMQ();
 
     await consumeAuthUserCreated();
@@ -23,7 +27,9 @@ async function startProfileService() {
     require("./config/cloudinaryConfig");
 
     app.listen(process.env.PROFILE_SERVICE_PORT, () => {
-      console.log(`Profile Service running on ${process.env.PROFILE_SERVICE_PORT}`);
+      console.log(
+        `Profile Service running on ${process.env.PROFILE_SERVICE_PORT}`,
+      );
     });
   } catch (err) {
     console.error("Profile Service startup failed", err);
