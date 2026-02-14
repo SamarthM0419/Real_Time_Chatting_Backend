@@ -6,7 +6,6 @@ app.use(express.json());
 app.use(cookieParser());
 const { connectRabbitMQ } = require("./utils/rabbitmq/connection");
 const { consumeAuthUserCreated } = require("./utils/rabbitmq/consumer");
-
 const profileRouter = require("./routes/profile");
 
 const connectProfileDb = require("./config/profileDatabase");
@@ -20,6 +19,8 @@ async function startProfileService() {
     await connectRabbitMQ();
 
     await consumeAuthUserCreated();
+
+    require("./config/cloudinaryConfig");
 
     app.listen(process.env.PROFILE_SERVICE_PORT, () => {
       console.log(`Profile Service running on ${process.env.PROFILE_SERVICE_PORT}`);
