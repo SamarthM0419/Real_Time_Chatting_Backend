@@ -1,4 +1,5 @@
 const { redisClient } = require("../utils/redisClient");
+const Connection = require("../models/connection");
 
 const consumeRequestAccepted = async (channel) => {
   const EXCHANGE = "events.exchange";
@@ -19,6 +20,11 @@ const consumeRequestAccepted = async (channel) => {
       const { fromUserId, toUserId } = event;
 
       const sorted = [fromUserId, toUserId].sort();
+      await Connection.updateOne(
+        { users: sorted },
+        { users: sorted },
+        { upsert: true },
+      );
       const key = `chat:allowed:${sorted[0]}:${sorted[1]}`;
 
       await redisClient.set(key, "true");
