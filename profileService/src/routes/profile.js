@@ -2,15 +2,32 @@ const express = require("express");
 const profileRouter = express.Router();
 const Profile = require("../models/profileModel");
 const { userAuth } = require("../middleware/profileMiddleware");
+const { redisClient } = require("../utils/redis/redisClient");
 
 profileRouter.get("/getProfile", userAuth, async (req, res) => {
   try {
+    const userId = req.user._id.toString();
+
+    const cacheKey = `profile:${userId}`;
+
+    const cachedProfile = await redisClient.get(cacheKey);
+    if (cachedProfile) {
+      return res.status(200).json({
+        data: JSON.parse(cachedProfile),
+        source: "cache",
+      });
+    }
+
     const profile = await Profile.findOne({ userId: req.user._id });
 
     if (!profile) {
       return res.status(404).json({ message: "Profile not found" });
     }
-    res.status(200).json({ data: profile });
+
+    await redisClient.set(cacheKey, JSON.stringify(profile), {
+      EX: 600,
+    });
+    res.status(200).json({ data: profile, source: "database" });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -47,4 +64,5 @@ profileRouter.patch("/patchProfile", userAuth, async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 });
+
 module.exports = profileRouter;
