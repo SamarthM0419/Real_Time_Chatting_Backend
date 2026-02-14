@@ -19,8 +19,8 @@ app.use("/", authRouter);
 
 connectAuthDB()
   .then(() => {
-    app.listen(process.env.PORT, () => {
-      console.log(`Auth Service running on ${process.env.PORT}`);
+    app.listen(process.env.AUTH_SERVICE_PORT, () => {
+      console.log(`Auth Service running on ${process.env.AUTH_SERVICE_PORT}`);
     });
   })
   .catch((err) => console.log("Auth DB Connection Failed", err.message));
