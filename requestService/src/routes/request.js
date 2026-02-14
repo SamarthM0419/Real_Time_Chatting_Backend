@@ -180,7 +180,7 @@ requestRouter.get("/invites/received", userAuth, async (req, res) => {
 });
 
 requestRouter.delete(
-  "cancel/:requestId",
+  "/cancel/:requestId",
   userAuth,
   async (req, res) => {
     try {
