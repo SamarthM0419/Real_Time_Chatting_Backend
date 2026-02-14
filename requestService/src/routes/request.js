@@ -143,16 +143,38 @@ requestRouter.get("/invites/sent", userAuth, async (req, res) => {
 
 requestRouter.get("/invites/received", userAuth, async (req, res) => {
   try {
+    const userId = req.user._id.toString();
+
+    const cacheKey = `recievedRequest:${userId}`;
+
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      return res.status(200).json({
+        data: JSON.parse(cachedData),
+        source: "cache",
+      });
+    }
+
     const requests = await Request.find({
       toUserId: req.user._id,
       status: "pending",
     }).sort({ createdAt: -1 });
 
-    res.status(200).json({
-      message: "Received requests retrieved successfully",
+    const responseData = {
+      message: "Receieved requests retrieved successfully",
       data: requests,
       count: requests.length,
+    };
+
+    await redisClient.set(cacheKey, JSON.stringify(responseData), {
+      Ex: 600,
     });
+
+    res.status(200).json({
+      ...responseData,
+      source: "database",
+    });
+
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
