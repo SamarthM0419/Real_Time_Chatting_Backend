@@ -9,14 +9,18 @@ const { Server } = require("socket.io");
 const { connectRedis } = require("./utils/redisClient");
 const { connectRabbitMQ } = require("./utils/connection");
 const { consumeRequestAccepted } = require("./utils/consumer");
+const initializeSocket = require("./sockets/chatSocket");
+const chatRouter = require("./router/chatRoutes")
 
 const app = express();
 app.set("trust proxy", 1);
 
-app.use(cors({
-  origin: process.env.CLIENT_URL || "*",
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "*",
+    credentials: true,
+  }),
+);
 
 app.use(express.json());
 app.use(cookieParser());
@@ -31,17 +35,11 @@ const io = new Server(server, {
   },
 });
 
-io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
-
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
-  });
-});
+initializeSocket(io);
+app.use("/", chatRouter);
 
 async function startChatService() {
   try {
-
     await connectChatDB();
 
     await connectRedis();
@@ -51,11 +49,8 @@ async function startChatService() {
     await consumeRequestAccepted(channel);
 
     server.listen(process.env.CHAT_SERVICE_PORT, () => {
-      console.log(
-        `Chat Service running on ${process.env.CHAT_SERVICE_PORT}`
-      );
+      console.log(`Chat Service running on ${process.env.CHAT_SERVICE_PORT}`);
     });
-
   } catch (err) {
     console.error("Failed to start Chat Service:", err);
   }

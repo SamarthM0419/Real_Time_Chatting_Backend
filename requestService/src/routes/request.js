@@ -95,7 +95,7 @@ requestRouter.patch("/respond/:requestId", userAuth, async (req, res) => {
       });
     }
 
-    await publishEvent(channel, `request.${status}`, {
+    await publishEvent(`request.${status}`, {
       requestId: request._id,
       fromUserId: request.fromUserId,
       toUserId: request.toUserId,

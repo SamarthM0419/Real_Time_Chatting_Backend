@@ -1,10 +1,14 @@
-const publishEvent = async (channel, routingKey, payload) => {
+const { getChannel } = require("./connection");
+
+const publishEvent = async (routingKey, payload) => {
   try {
+    const channel = getChannel();
+
     channel.publish(
       "events.exchange",
       routingKey,
       Buffer.from(JSON.stringify(payload)),
-      { persistent: true },
+      { persistent: true }
     );
 
     console.log(`Published event: ${routingKey}`);
