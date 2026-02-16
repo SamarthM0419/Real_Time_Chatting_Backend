@@ -1,0 +1,60 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_HUB_USER = 'samarth02195' 
+        DOCKER_CREDS_ID = 'docker-hub-cred-project'
+        GIT_SHA = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+    }
+
+    stages {
+      
+        stage('Build Auth Service') {
+            when { changeset "authService/**" } 
+            steps {
+                script {
+                    buildAndPush("authService", "auth-service")
+                }
+            }
+        }
+
+
+        stage('Build Profile Service') {
+            when { changeset "profileService/**" }
+            steps {
+                script {
+                    buildAndPush("profileService", "profile-service")
+                }
+            }
+        }
+
+  
+        stage('Build Request Service') {
+            when { changeset "requestService/**" }
+            steps {
+                script {
+                    buildAndPush("requestService", "request-service")
+                }
+            }
+        }
+    }
+}
+
+
+def buildAndPush(folderName, repoName) {
+    def imageTag = "${env.BUILD_NUMBER}-${env.GIT_SHA}"
+    def fullRepo = "${env.DOCKER_HUB_USER}/${repoName}"
+    
+    dir(folderName) {
+      
+        def app = docker.build("${fullRepo}:${imageTag}")
+        
+
+        docker.withRegistry('', env.DOCKER_CREDS_ID) {
+            app.push()
+            app.push("latest")
+        }
+        
+        sh "docker rmi ${fullRepo}:${imageTag} || true"
+    }
+}
