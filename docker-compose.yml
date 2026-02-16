@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  auth-service:
+    build: ./authService
+    container_name: auth-service
+    ports:
+      - "5000:5000"
+    networks:
+      - backend-network
+
+  profile-service:
+    build: ./profileService
+    container_name: profile-service
+    ports:
+      - "5001:5001"
+    networks:
+      - backend-network
+
+  request-service:
+    build: ./requestService
+    container_name: request-service
+    ports:
+      - "5002:5002"
+    networks:
+      - backend-network
+
+networks:
+  backend-network:
+    driver: bridge
