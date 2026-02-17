@@ -1,14 +1,12 @@
-version: "3.9"
-
 services:
 
   auth-service:
     image: samarth02198/auth-service:latest
     build:
-      context:  ./auth-service
-      dockerfile: DockerFile
+      context: ./authService
+      dockerfile: Dockerfile
     env_file:
-      - ./auth-service/.env
+      - ./authService/.env
     expose:
       - "5000"
     networks:
@@ -18,10 +16,10 @@ services:
   profile-service:
     image: samarth02198/profile-service:latest
     build:
-      context: ./profile-service
-      dockerfile : DockerFile
+      context: ./profileService
+      dockerfile: Dockerfile
     env_file:
-      - ./profile-service/.env
+      - ./profileService/.env
     expose:
       - "6000"
     networks:
@@ -30,30 +28,16 @@ services:
 
   request-service:
     image: samarth02198/request-service:latest
-    build: 
-      context : ./request-service
-      dockerfile: DockerFile
+    build:
+      context: ./requestService
+      dockerfile: Dockerfile
     env_file:
-      - ./request-service/.env
+      - ./requestService/.env
     expose:
       - "7000"
     networks:
       - backend-project
     restart: unless-stopped
-
-  chat-service:
-    image: samarth02198/chat-service:latest
-    build:
-      context :  ./chat-service
-      dockerfile : DockerFile
-    env_file:
-      - ./chat-service/.env
-    expose:
-      - "8000"
-    networks:
-      - backend-project
-    restart: unless-stopped
-
 
 networks:
   backend-project:
