@@ -72,8 +72,7 @@ profileRouter.patch("/patchProfile", userAuth, async (req, res) => {
         req.body.profilePic = cloudinaryUrl;
       }
 
-      else if (profilePic.includes("cloudinary.com")) {
-      } else {
+      else {
         throw new Error("Invalid profile picture format");
       }
     }

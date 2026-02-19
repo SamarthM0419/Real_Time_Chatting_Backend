@@ -1,0 +1,44 @@
+services:
+
+  auth-service:
+    image: samarth02198/auth-service:latest
+    build:
+      context: ./authService
+      dockerfile: Dockerfile
+    env_file:
+      - ./authService/.env
+    expose:
+      - "5000"
+    networks:
+      - backend-project
+    restart: unless-stopped
+
+  profile-service:
+    image: samarth02198/profile-service:latest
+    build:
+      context: ./profileService
+      dockerfile: Dockerfile
+    env_file:
+      - ./profileService/.env
+    expose:
+      - "6000"
+    networks:
+      - backend-project
+    restart: unless-stopped
+
+  request-service:
+    image: samarth02198/request-service:latest
+    build:
+      context: ./requestService
+      dockerfile: Dockerfile
+    env_file:
+      - ./requestService/.env
+    expose:
+      - "7000"
+    networks:
+      - backend-project
+    restart: unless-stopped
+
+networks:
+  backend-project:
+    driver: bridge
