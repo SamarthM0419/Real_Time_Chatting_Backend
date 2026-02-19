@@ -4,6 +4,7 @@ const Request = require("../models/requestModel");
 const { userAuth } = require("../middleware/requestMiddleware");
 const UserSchema = require("../models/userModel");
 const { redisClient } = require("../utils/redisClient");
+const { publishEvent } = require("../utils/publisher");
 
 requestRouter.post("/invite/send", userAuth, async (req, res) => {
   try {
@@ -94,6 +95,13 @@ requestRouter.patch("/respond/:requestId", userAuth, async (req, res) => {
       });
     }
 
+    await publishEvent(`request.${status}`, {
+      requestId: request._id,
+      fromUserId: request.fromUserId,
+      toUserId: request.toUserId,
+      respondedAt: new Date(),
+    });
+
     return res.status(200).json({
       message: `Request ${status} successfully`,
       data: request,
@@ -179,53 +187,44 @@ requestRouter.get("/invites/received", userAuth, async (req, res) => {
   }
 });
 
-requestRouter.delete(
-  "/cancel/:requestId",
-  userAuth,
-  async (req, res) => {
-    try {
-      const { requestId } = req.params;
-      const userId = req.user._id.toString();
+requestRouter.delete("/cancel/:requestId", userAuth, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const userId = req.user._id.toString();
 
-      const request = await Request.findById(requestId);
+    const request = await Request.findById(requestId);
 
-      if (!request) {
-        return res.status(404).json({
-          message: "Request not found",
-        });
-      }
-
-      if (request.fromUserId.toString() !== userId) {
-        return res.status(403).json({
-          message: "You are not allowed to cancel this request",
-        });
-      }
-
-      if (request.status !== "pending") {
-        return res.status(400).json({
-          message: "Only pending requests can be cancelled",
-        });
-      }
-
-      await request.deleteOne();
-
-
-      await redisClient.del(`sentRequests:${userId}`);
-      await redisClient.del(
-        `receivedRequests:${request.toUserId.toString()}`
-      );
-
-      res.status(200).json({
-        message: "Request cancelled successfully",
-      });
-
-    } catch (err) {
-      res.status(400).json({
-        message: err.message,
+    if (!request) {
+      return res.status(404).json({
+        message: "Request not found",
       });
     }
-  }
-);
 
+    if (request.fromUserId.toString() !== userId) {
+      return res.status(403).json({
+        message: "You are not allowed to cancel this request",
+      });
+    }
+
+    if (request.status !== "pending") {
+      return res.status(400).json({
+        message: "Only pending requests can be cancelled",
+      });
+    }
+
+    await request.deleteOne();
+
+    await redisClient.del(`sentRequests:${userId}`);
+    await redisClient.del(`receivedRequests:${request.toUserId.toString()}`);
+
+    res.status(200).json({
+      message: "Request cancelled successfully",
+    });
+  } catch (err) {
+    res.status(400).json({
+      message: err.message,
+    });
+  }
+});
 
 module.exports = requestRouter;
