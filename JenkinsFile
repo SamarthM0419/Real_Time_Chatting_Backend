@@ -1,23 +1,30 @@
 pipeline {
     agent any
-    
+
     environment {
-        DOCKER_HUB_USER = 'samarth02195' 
-        DOCKER_CREDS_ID = 'docker-hub-cred-project'
-        GIT_SHA = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+        GIT_REPO = 'https://github.com/YOUR_REPO.git'
+        BRANCH = 'main'
+        DOCKER_HUB_USER = 'samarth02195'
+        DOCKER_CREDS = credentials('docker-hub-cred-project')
+        DOCKER_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
-      
+
+        stage('Checkout Code') {
+            steps {
+                git branch: "${BRANCH}", url: "${GIT_REPO}"
+            }
+        }
+
         stage('Build Auth Service') {
-            when { changeset "authService/**" } 
+            when { changeset "authService/**" }
             steps {
                 script {
                     buildAndPush("authService", "auth-service")
                 }
             }
         }
-
 
         stage('Build Profile Service') {
             when { changeset "profileService/**" }
@@ -28,7 +35,6 @@ pipeline {
             }
         }
 
-  
         stage('Build Request Service') {
             when { changeset "requestService/**" }
             steps {
@@ -37,24 +43,60 @@ pipeline {
                 }
             }
         }
+
+        stage('Build Chat Service') {
+            when { changeset "chatService/**" }
+            steps {
+                script {
+                    buildAndPush("chatService", "chat-service")
+                }
+            }
+        }
+
+        stage('Deploy Containers') {
+            steps {
+                sh """
+                docker rm -f auth-service || true
+                docker rm -f profile-service || true
+                docker rm -f request-service || true
+                docker rm -f chat-service || true
+
+                docker run -d -p 5001:5001 --name auth-service ${DOCKER_HUB_USER}/auth-service:latest
+                docker run -d -p 5002:5002 --name profile-service ${DOCKER_HUB_USER}/profile-service:latest
+                docker run -d -p 5003:5003 --name request-service ${DOCKER_HUB_USER}/request-service:latest
+                docker run -d -p 5004:5004 --name chat-service ${DOCKER_HUB_USER}/chat-service:latest
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "All Services Built & Deployed Successfully "
+        }
+        failure {
+            echo "Pipeline Failed "
+        }
     }
 }
 
 
 def buildAndPush(folderName, repoName) {
-    def imageTag = "${env.BUILD_NUMBER}-${env.GIT_SHA}"
     def fullRepo = "${env.DOCKER_HUB_USER}/${repoName}"
-    
-    dir(folderName) {
-      
-        def app = docker.build("${fullRepo}:${imageTag}")
-        
 
-        docker.withRegistry('', env.DOCKER_CREDS_ID) {
-            app.push()
-            app.push("latest")
-        }
-        
-        sh "docker rmi ${fullRepo}:${imageTag} || true"
+    dir(folderName) {
+
+        sh """
+        docker build -t ${fullRepo}:${env.DOCKER_TAG} .
+        docker tag ${fullRepo}:${env.DOCKER_TAG} ${fullRepo}:latest
+        """
+
+        sh """
+        echo ${env.DOCKER_CREDS_PSW} | docker login -u ${env.DOCKER_CREDS_USR} --password-stdin
+        docker push ${fullRepo}:${env.DOCKER_TAG}
+        docker push ${fullRepo}:latest
+        """
+
+        sh "docker rmi ${fullRepo}:${env.DOCKER_TAG} || true"
     }
 }

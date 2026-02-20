@@ -17,7 +17,7 @@ module.exports = function initializeSocket(io) {
         }
 
         const isParticipant = chat.participants.some(
-          (id) => id.toString() === socket.user._id,
+          (id) => id.toString() === socket.user._id.toString()
         );
 
         if (!isParticipant) {
@@ -31,34 +31,44 @@ module.exports = function initializeSocket(io) {
       }
     });
 
-    socket.on("sendMessage", async ({ chatId, text }) => {
-      try {
-        if (!text) {
-          return;
-        }
-        const chat = await Chat.findById(chatId);
-        if (!chat) return;
+socket.on("sendMessage", async ({ chatId, text }) => {
+  try {
+    if (!text) return;
 
-        const isParticipant = chat.participants.some(
-          (id) => id.toString() === socket.user.id,
-        );
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+      console.log("Chat not found");
+      return;
+    }
 
-        if (!isParticipant) return;
+    const isParticipant = chat.participants.some(
+      (id) => id.toString() === socket.user._id.toString()
+    );
 
-        const message = await Message.create({
-          chatId,
-          sender: socket.user._id,
-          text,
-        });
+    if (!isParticipant) {
+      console.log("Not authorized to send message");
+      return;
+    }
 
-        await Chat.findByIdAndUpdate(chatId, {
-          lastMessage: message._id,
-        });
-        io.to(chatId).emit("receiveMessage", message);
-      } catch (err) {
-        console.error("Send message error:", err);
-      }
+    const message = await Message.create({
+      chatId,
+      senderId: socket.user._id,   
+      text,
+      readBy: [socket.user._id]
     });
+
+    await Chat.findByIdAndUpdate(chatId, {
+      lastMessage: message._id,
+    });
+
+    console.log("Message saved:", message.text);
+
+    io.to(chatId).emit("receiveMessage", message);
+
+  } catch (err) {
+    console.error("Send message error:", err);
+  }
+});
 
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.user._id);
