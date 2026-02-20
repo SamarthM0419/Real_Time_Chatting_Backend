@@ -7,20 +7,14 @@ const { redisClient } = require("../utils/redisClient");
 
 chatRouter.post("/create-direct", userAuth, async (req, res) => {
   try {
-    const senderId = req.user._id.toString();
+    const senderId = req.user.userId.toString();
     const { receiverId } = req.body;
 
-    if (!receiverId) {
-      return res.status(400).json({
-        message: "Receiver ID required",
-      });
-    }
+    if (!receiverId)
+      return res.status(400).json({ message: "Receiver ID required" });
 
-    if (senderId === receiverId) {
-      return res.status(400).json({
-        message: "Cannot chat with yourself",
-      });
-    }
+    if (senderId === receiverId)
+      return res.status(400).json({ message: "Cannot chat with yourself" });
 
     const sorted = [senderId, receiverId].sort();
     const redisKey = `chat:allowed:${sorted[0]}:${sorted[1]}`;
@@ -29,16 +23,14 @@ chatRouter.post("/create-direct", userAuth, async (req, res) => {
 
     if (!allowed) {
       const connection = await Connection.findOne({
-        users: sorted,
+        user1: sorted[0],
+        user2: sorted[1],
       });
 
-      if (!connection) {
-        return res.status(403).json({
-          message: "Users are not connected",
-        });
-      }
+      if (!connection)
+        return res.status(403).json({ message: "Users are not connected" });
 
-      await redisClient.set(redisKey, "true");
+      await redisClient.set(redisKey, "true", { EX: 3600 });
     }
 
     const existingChat = await Chat.findOne({
@@ -46,9 +38,7 @@ chatRouter.post("/create-direct", userAuth, async (req, res) => {
       participants: { $all: sorted, $size: 2 },
     });
 
-    if (existingChat) {
-      return res.status(200).json(existingChat);
-    }
+    if (existingChat) return res.status(200).json(existingChat);
 
     const newChat = await Chat.create({
       chatType: "direct",
