@@ -25,3 +25,5 @@ connectionSchema.index(
   { user1: 1, user2: 1 },
   { unique: true }
 );
+
+module.exports = mongoose.model("Connection", connectionSchema);

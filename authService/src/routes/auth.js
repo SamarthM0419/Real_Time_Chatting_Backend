@@ -66,18 +66,27 @@ authRouter.post("/login", loginLimiter, async (req, res) => {
         .status(400)
         .json({ message: "User not Found, Signup to continue" });
     }
+
     const isPasswordValid = await user.validatePassword(password);
-    if (isPasswordValid) {
-      const token = await user.getJWT();
-      res.cookie("token", token, {
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      });
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Incorrect password" });
     }
+
+    const token = await user.getJWT();
+    
+    res.cookie("token", token, {
+      expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/", 
+    });
 
     res.status(200).json({
       data: {
         id: user._id,
         emailId: user.emailId,
+        token: token,
       },
       message: "User login successful!!!",
     });
