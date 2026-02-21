@@ -2,7 +2,7 @@ const express = require("express");
 const connectChatDB = require("./config/chatDatabase");
 require("dotenv").config();
 const cookieParser = require("cookie-parser");
-const cors = require("cors");
+// const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
 
@@ -15,12 +15,12 @@ const chatRouter = require("./router/chatRoutes")
 const app = express();
 app.set("trust proxy", 1);
 
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || "*",
-    credentials: true,
-  }),
-);
+// app.use(
+//   cors({
+//     origin: process.env.CLIENT_URL || "*",
+//     credentials: true,
+//   }),
+// );
 
 app.use(express.json());
 app.use(cookieParser());

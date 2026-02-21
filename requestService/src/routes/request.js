@@ -54,6 +54,9 @@ requestRouter.post("/invite/send", userAuth, async (req, res) => {
       status: "pending",
     });
 
+    await redisClient.del(`sentRequests:${fromUserId}`);
+    await redisClient.del(`receivedRequests:${toUserId}`);
+
     return res.status(201).json({
       message: "Invite sent successfully",
       data,
@@ -95,6 +98,9 @@ requestRouter.patch("/respond/:requestId", userAuth, async (req, res) => {
       });
     }
 
+    await redisClient.del(`sentRequests:${request.fromUserId}`);
+    await redisClient.del(`receivedRequests:${request.toUserId}`);
+
     await publishEvent(`request.${status}`, {
       requestId: request._id,
       fromUserId: request.fromUserId,
@@ -115,7 +121,7 @@ requestRouter.get("/invites/sent", userAuth, async (req, res) => {
   try {
     const userId = req.user._id.toString();
 
-    const cacheKey = `sentRequest:${userId}`;
+    const cacheKey = `sentRequests:${userId}`;
 
     const cachedData = await redisClient.get(cacheKey);
 
@@ -137,7 +143,7 @@ requestRouter.get("/invites/sent", userAuth, async (req, res) => {
     };
 
     await redisClient.set(cacheKey, JSON.stringify(responseData), {
-      Ex: 600,
+      EX: 600,
     });
 
     res.status(200).json({
@@ -153,7 +159,7 @@ requestRouter.get("/invites/received", userAuth, async (req, res) => {
   try {
     const userId = req.user._id.toString();
 
-    const cacheKey = `recievedRequest:${userId}`;
+    const cacheKey = `receivedRequests:${userId}`;
 
     const cachedData = await redisClient.get(cacheKey);
     if (cachedData) {
@@ -169,13 +175,13 @@ requestRouter.get("/invites/received", userAuth, async (req, res) => {
     }).sort({ createdAt: -1 });
 
     const responseData = {
-      message: "Receieved requests retrieved successfully",
+      message: "Received requests retrieved successfully",
       data: requests,
       count: requests.length,
     };
 
     await redisClient.set(cacheKey, JSON.stringify(responseData), {
-      Ex: 600,
+      EX: 600,
     });
 
     res.status(200).json({

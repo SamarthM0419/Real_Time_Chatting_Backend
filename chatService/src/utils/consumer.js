@@ -21,9 +21,13 @@ const consumeRequestAccepted = async (channel) => {
 
       const sorted = [fromUserId, toUserId].sort();
       await Connection.updateOne(
-        { users: sorted },
-        { users: sorted },
-        { upsert: true },
+        { user1: sorted[0], user2: sorted[1] },
+        { 
+          user1: sorted[0], 
+          user2: sorted[1], 
+          status: "accepted" 
+        },
+        { upsert: true }
       );
       const key = `chat:allowed:${sorted[0]}:${sorted[1]}`;
 
