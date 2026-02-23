@@ -53,6 +53,15 @@ pipeline {
             }
         }
 
+        stage('Build API Gateway') {
+            when { changeset "apigateway/**" }
+            steps {
+                script {
+                    buildAndPush("apigateway", "api-gateway")
+                }
+            }
+        }
+
         stage('Deploy Containers') {
             steps {
                 sh """
@@ -60,11 +69,16 @@ pipeline {
                 docker rm -f profile-service || true
                 docker rm -f request-service || true
                 docker rm -f chat-service || true
+                docker rm -f api-gateway || true
 
-                docker run -d -p 5001:5001 --name auth-service ${DOCKER_HUB_USER}/auth-service:latest
-                docker run -d -p 5002:5002 --name profile-service ${DOCKER_HUB_USER}/profile-service:latest
-                docker run -d -p 5003:5003 --name request-service ${DOCKER_HUB_USER}/request-service:latest
-                docker run -d -p 5004:5004 --name chat-service ${DOCKER_HUB_USER}/chat-service:latest
+                # Run backend services (internal only)
+                docker run -d --name auth-service ${DOCKER_HUB_USER}/auth-service:latest
+                docker run -d --name profile-service ${DOCKER_HUB_USER}/profile-service:latest
+                docker run -d --name request-service ${DOCKER_HUB_USER}/request-service:latest
+                docker run -d --name chat-service ${DOCKER_HUB_USER}/chat-service:latest
+
+                # Run API Gateway (only public port)
+                docker run -d -p 3000:3000 --name api-gateway ${DOCKER_HUB_USER}/api-gateway:latest
                 """
             }
         }
@@ -77,26 +91,5 @@ pipeline {
         failure {
             echo "Pipeline Failed "
         }
-    }
-}
-
-
-def buildAndPush(folderName, repoName) {
-    def fullRepo = "${env.DOCKER_HUB_USER}/${repoName}"
-
-    dir(folderName) {
-
-        sh """
-        docker build -t ${fullRepo}:${env.DOCKER_TAG} .
-        docker tag ${fullRepo}:${env.DOCKER_TAG} ${fullRepo}:latest
-        """
-
-        sh """
-        echo ${env.DOCKER_CREDS_PSW} | docker login -u ${env.DOCKER_CREDS_USR} --password-stdin
-        docker push ${fullRepo}:${env.DOCKER_TAG}
-        docker push ${fullRepo}:latest
-        """
-
-        sh "docker rmi ${fullRepo}:${env.DOCKER_TAG} || true"
     }
 }
