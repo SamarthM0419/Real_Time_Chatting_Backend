@@ -54,19 +54,17 @@ services:
 
 
   nginx:
-    image: nginx:latest
+    image: samarth02195/api-gateway:latest
     container_name: api-gateway
     ports:
       - "3000:3000"
-    volumes:
-      - ./apigateway/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - auth-service
       - profile-service
       - request-service
       - chat-service
     networks:
-      - backend-project
+    - backend-project
 
 networks:
   backend-project:
