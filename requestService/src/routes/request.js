@@ -4,6 +4,7 @@ const Request = require("../models/requestModel");
 const { userAuth } = require("../middleware/requestMiddleware");
 const UserSchema = require("../models/userModel");
 const { redisClient } = require("../utils/redisClient");
+const { publishEvent } = require("../utils/publisher");
 
 requestRouter.post("/invite/send", userAuth, async (req, res) => {
   try {
@@ -53,6 +54,9 @@ requestRouter.post("/invite/send", userAuth, async (req, res) => {
       status: "pending",
     });
 
+    await redisClient.del(`sentRequests:${fromUserId}`);
+    await redisClient.del(`receivedRequests:${toUserId}`);
+
     return res.status(201).json({
       message: "Invite sent successfully",
       data,
@@ -94,6 +98,16 @@ requestRouter.patch("/respond/:requestId", userAuth, async (req, res) => {
       });
     }
 
+    await redisClient.del(`sentRequests:${request.fromUserId}`);
+    await redisClient.del(`receivedRequests:${request.toUserId}`);
+
+    await publishEvent(`request.${status}`, {
+      requestId: request._id,
+      fromUserId: request.fromUserId,
+      toUserId: request.toUserId,
+      respondedAt: new Date(),
+    });
+
     return res.status(200).json({
       message: `Request ${status} successfully`,
       data: request,
@@ -107,7 +121,7 @@ requestRouter.get("/invites/sent", userAuth, async (req, res) => {
   try {
     const userId = req.user._id.toString();
 
-    const cacheKey = `sentRequest:${userId}`;
+    const cacheKey = `sentRequests:${userId}`;
 
     const cachedData = await redisClient.get(cacheKey);
 
@@ -129,7 +143,7 @@ requestRouter.get("/invites/sent", userAuth, async (req, res) => {
     };
 
     await redisClient.set(cacheKey, JSON.stringify(responseData), {
-      Ex: 600,
+      EX: 600,
     });
 
     res.status(200).json({
@@ -145,7 +159,7 @@ requestRouter.get("/invites/received", userAuth, async (req, res) => {
   try {
     const userId = req.user._id.toString();
 
-    const cacheKey = `recievedRequest:${userId}`;
+    const cacheKey = `receivedRequests:${userId}`;
 
     const cachedData = await redisClient.get(cacheKey);
     if (cachedData) {
@@ -161,13 +175,13 @@ requestRouter.get("/invites/received", userAuth, async (req, res) => {
     }).sort({ createdAt: -1 });
 
     const responseData = {
-      message: "Receieved requests retrieved successfully",
+      message: "Received requests retrieved successfully",
       data: requests,
       count: requests.length,
     };
 
     await redisClient.set(cacheKey, JSON.stringify(responseData), {
-      Ex: 600,
+      EX: 600,
     });
 
     res.status(200).json({
@@ -179,53 +193,44 @@ requestRouter.get("/invites/received", userAuth, async (req, res) => {
   }
 });
 
-requestRouter.delete(
-  "/cancel/:requestId",
-  userAuth,
-  async (req, res) => {
-    try {
-      const { requestId } = req.params;
-      const userId = req.user._id.toString();
+requestRouter.delete("/cancel/:requestId", userAuth, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const userId = req.user._id.toString();
 
-      const request = await Request.findById(requestId);
+    const request = await Request.findById(requestId);
 
-      if (!request) {
-        return res.status(404).json({
-          message: "Request not found",
-        });
-      }
-
-      if (request.fromUserId.toString() !== userId) {
-        return res.status(403).json({
-          message: "You are not allowed to cancel this request",
-        });
-      }
-
-      if (request.status !== "pending") {
-        return res.status(400).json({
-          message: "Only pending requests can be cancelled",
-        });
-      }
-
-      await request.deleteOne();
-
-
-      await redisClient.del(`sentRequests:${userId}`);
-      await redisClient.del(
-        `receivedRequests:${request.toUserId.toString()}`
-      );
-
-      res.status(200).json({
-        message: "Request cancelled successfully",
-      });
-
-    } catch (err) {
-      res.status(400).json({
-        message: err.message,
+    if (!request) {
+      return res.status(404).json({
+        message: "Request not found",
       });
     }
-  }
-);
 
+    if (request.fromUserId.toString() !== userId) {
+      return res.status(403).json({
+        message: "You are not allowed to cancel this request",
+      });
+    }
+
+    if (request.status !== "pending") {
+      return res.status(400).json({
+        message: "Only pending requests can be cancelled",
+      });
+    }
+
+    await request.deleteOne();
+
+    await redisClient.del(`sentRequests:${userId}`);
+    await redisClient.del(`receivedRequests:${request.toUserId.toString()}`);
+
+    res.status(200).json({
+      message: "Request cancelled successfully",
+    });
+  } catch (err) {
+    res.status(400).json({
+      message: err.message,
+    });
+  }
+});
 
 module.exports = requestRouter;

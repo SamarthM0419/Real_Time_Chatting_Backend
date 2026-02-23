@@ -29,4 +29,10 @@ const connectRabbitMQ = async () => {
   }
 };
 
-module.exports = { connectRabbitMQ };
+const getChannel = () => {
+  if (!channel) {
+    throw new Error("RabbitMQ channel not initialized");
+  }
+  return channel;
+};
+module.exports = { connectRabbitMQ , getChannel };

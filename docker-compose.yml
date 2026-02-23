@@ -39,6 +39,33 @@ services:
       - backend-project
     restart: unless-stopped
 
+  chat-service:
+    image: samarth02198/chat-service:latest
+    build:
+      context: ./chatService
+      dockerfile: Dockerfile
+    env_file:
+      - ./chatService/.env
+    expose:
+      - "8000"
+    networks:
+      - backend-project
+    restart: unless-stopped
+
+
+  nginx:
+    image: samarth02195/api-gateway:latest
+    container_name: api-gateway
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-service
+      - profile-service
+      - request-service
+      - chat-service
+    networks:
+    - backend-project
+
 networks:
   backend-project:
     driver: bridge
