@@ -59,14 +59,14 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./apigateway/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - auth-service
       - profile-service
       - request-service
       - chat-service
     networks:
-      - backend-projec
+      - backend-project
 
 networks:
   backend-project:
