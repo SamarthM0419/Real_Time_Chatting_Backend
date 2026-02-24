@@ -70,7 +70,7 @@ authRouter.post("/login", loginLimiter, async (req, res) => {
     const isPasswordValid = await user.validatePassword(password);
     
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Incorrect password" });
+      return res.status(401).json({ message: "Incorrect credentials" });
     }
 
     const token = await user.getJWT();
