@@ -10,7 +10,7 @@ services:
     expose:
       - "5000"
     networks:
-      - backend-project
+      - backend-network
     restart: unless-stopped
 
   profile-service:
@@ -21,9 +21,9 @@ services:
     env_file:
       - ./profileService/.env
     expose:
-      - "6000"
+      - "5001"
     networks:
-      - backend-project
+      - backend-network
     restart: unless-stopped
 
   request-service:
@@ -34,9 +34,9 @@ services:
     env_file:
       - ./requestService/.env
     expose:
-      - "7000"
+      - "5002"
     networks:
-      - backend-project
+      - backend-network
     restart: unless-stopped
 
   chat-service:
@@ -47,9 +47,9 @@ services:
     env_file:
       - ./chatService/.env
     expose:
-      - "8000"
+      - "5003"
     networks:
-      - backend-project
+      - backend-network
     restart: unless-stopped
 
 
@@ -64,8 +64,8 @@ services:
       - request-service
       - chat-service
     networks:
-    - backend-project
+    - backend-network
 
 networks:
-  backend-project:
+  backend-network:
     driver: bridge
