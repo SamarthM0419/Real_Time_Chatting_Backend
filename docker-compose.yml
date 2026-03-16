@@ -1,7 +1,7 @@
 services:
 
   auth-service:
-    image: samarth02198/auth-service:latest
+    image: samarth02195/auth-service:latest
     build:
       context: ./authService
       dockerfile: Dockerfile
@@ -10,46 +10,46 @@ services:
     expose:
       - "5000"
     networks:
-      - backend-project
+      - backend-network
     restart: unless-stopped
 
   profile-service:
-    image: samarth02198/profile-service:latest
+    image: samarth02195/profile-service:latest
     build:
       context: ./profileService
       dockerfile: Dockerfile
     env_file:
       - ./profileService/.env
     expose:
-      - "6000"
+      - "5001"
     networks:
-      - backend-project
+      - backend-network
     restart: unless-stopped
 
   request-service:
-    image: samarth02198/request-service:latest
+    image: samarth02195/request-service:latest
     build:
       context: ./requestService
       dockerfile: Dockerfile
     env_file:
       - ./requestService/.env
     expose:
-      - "7000"
+      - "5002"
     networks:
-      - backend-project
+      - backend-network
     restart: unless-stopped
 
   chat-service:
-    image: samarth02198/chat-service:latest
+    image: samarth02195/chat-service:latest
     build:
       context: ./chatService
       dockerfile: Dockerfile
     env_file:
       - ./chatService/.env
     expose:
-      - "8000"
+      - "5003"
     networks:
-      - backend-project
+      - backend-network
     restart: unless-stopped
 
 
@@ -64,8 +64,8 @@ services:
       - request-service
       - chat-service
     networks:
-    - backend-project
+    - backend-network
 
 networks:
-  backend-project:
+  backend-network:
     driver: bridge
