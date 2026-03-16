@@ -1,16 +1,214 @@
-name: CI Workflow
+name: CI - Real Time Chat Backend
 
 on:
   pull_request:
     branches:
-      - dev   
+      - dev
 
 jobs:
-  trigger-jenkins:
+  build-auth-service:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Jenkins Pipeline
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Check if authService changed
+        id: auth-changed
+        uses: tj-actions/changed-files@v44
+        with:
+          files: authService/**
+
+      - name: Login to Docker Hub
+        if: steps.auth-changed.outputs.any_changed == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build & Push Auth Service
+        if: steps.auth-changed.outputs.any_changed == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./authService
+          push: true
+          tags: |
+            samarth02195/auth-service:${{ github.run_number }}
+            samarth02195/auth-service:latest
+
+  build-profile-service:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Check if profileService changed
+        id: profile-changed
+        uses: tj-actions/changed-files@v44
+        with:
+          files: profileService/**
+
+      - name: Login to Docker Hub
+        if: steps.profile-changed.outputs.any_changed == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build & Push Profile Service
+        if: steps.profile-changed.outputs.any_changed == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./profileService
+          push: true
+          tags: |
+            samarth02195/profile-service:${{ github.run_number }}
+            samarth02195/profile-service:latest
+
+  build-request-service:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Check if requestService changed
+        id: request-changed
+        uses: tj-actions/changed-files@v44
+        with:
+          files: requestService/**
+
+      - name: Login to Docker Hub
+        if: steps.request-changed.outputs.any_changed == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build & Push Request Service
+        if: steps.request-changed.outputs.any_changed == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./requestService
+          push: true
+          tags: |
+            samarth02195/request-service:${{ github.run_number }}
+            samarth02195/request-service:latest
+
+  build-chat-service:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Check if chatService changed
+        id: chat-changed
+        uses: tj-actions/changed-files@v44
+        with:
+          files: chatService/**
+
+      - name: Login to Docker Hub
+        if: steps.chat-changed.outputs.any_changed == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build & Push Chat Service
+        if: steps.chat-changed.outputs.any_changed == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./chatService
+          push: true
+          tags: |
+            samarth02195/chat-service:${{ github.run_number }}
+            samarth02195/chat-service:latest
+
+  build-api-gateway:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Check if apigateway changed
+        id: gateway-changed
+        uses: tj-actions/changed-files@v44
+        with:
+          files: apigateway/**
+
+      - name: Login to Docker Hub
+        if: steps.gateway-changed.outputs.any_changed == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build & Push API Gateway
+        if: steps.gateway-changed.outputs.any_changed == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apigateway
+          push: true
+          tags: |
+            samarth02195/api-gateway:${{ github.run_number }}
+            samarth02195/api-gateway:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build-auth-service, build-profile-service, build-request-service, build-chat-service, build-api-gateway]
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Pull Latest Images
         run: |
-          curl -X POST \
-            -u ${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }} \
-            http://localhost:8080/job/dev-ci-pipeline/build?token=${{ secrets.JENKINS_TOKEN }}
+          docker pull samarth02195/auth-service:latest
+          docker pull samarth02195/profile-service:latest
+          docker pull samarth02195/request-service:latest
+          docker pull samarth02195/chat-service:latest
+          docker pull samarth02195/api-gateway:latest
+
+      - name: Create Docker Network
+        run: docker network create chat-network || true
+
+      - name: Stop Old Containers
+        run: |
+          docker rm -f auth-service || true
+          docker rm -f profile-service || true
+          docker rm -f request-service || true
+          docker rm -f chat-service || true
+          docker rm -f api-gateway || true
+
+      - name: Deploy All Containers
+        run: |
+          docker run -d --name auth-service \
+            --network chat-network \
+            samarth02195/auth-service:latest
+
+          docker run -d --name profile-service \
+            --network chat-network \
+            samarth02195/profile-service:latest
+
+          docker run -d --name request-service \
+            --network chat-network \
+            samarth02195/request-service:latest
+
+          docker run -d --name chat-service \
+            --network chat-network \
+            samarth02195/chat-service:latest
+
+          docker run -d -p 3000:3000 \
+            --name api-gateway \
+            --network chat-network \
+            samarth02195/api-gateway:latest
