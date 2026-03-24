@@ -15,12 +15,12 @@ const profileSchema = new mongoose.Schema(
     },
     lastName: {
       type: String,
-      minLength: 2,
+      minLength: 1,
     },
     about: {
       type: String,
       default: "Hey there! I am using this chat app.",
-      maxLength: 100,
+      maxLength: 750,
     },
     profilePic: {
       type: String,
@@ -37,7 +37,7 @@ const profileSchema = new mongoose.Schema(
     },
     gender: {
       type: String,
-      enum: ["male", "female", "other"],
+      enum: ["male", "female", "other","Male","Female"],
     },
   },
   {

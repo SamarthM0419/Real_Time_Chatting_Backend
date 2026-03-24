@@ -34,7 +34,7 @@ profileRouter.get("/getProfile", userAuth, async (req, res) => {
   }
 });
 
-profileRouter.patch("/patchProfile", userAuth, async (req, res) => {
+profileRouter.put("/patchProfile", userAuth, async (req, res) => {
   try {
     const ALLOWED_UPDATES = [
       "firstName",
