@@ -185,4 +185,20 @@ chatRouter.put("/leave-group", userAuth, async (req, res) => {
   }
 });
 
+const Message = require("../models/messageModel"); // Make sure you import the Message model at the top!
+
+chatRouter.get("/messages/:chatId", userAuth, async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    
+    // Find all messages for this chat, sorted oldest to newest
+    const messages = await Message.find({ chatId }).sort({ createdAt: 1 });
+    
+    return res.status(200).json(messages);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = chatRouter;
