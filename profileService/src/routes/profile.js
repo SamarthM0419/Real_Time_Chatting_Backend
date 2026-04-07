@@ -91,4 +91,17 @@ profileRouter.put("/patchProfile", userAuth, async (req, res) => {
   }
 });
 
+profileRouter.get("/profile/:userId", userAuth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const profile = await Profile.findOne({ userId });
+    if (!profile) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+    res.status(200).json({ data: profile });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
 module.exports = profileRouter;
