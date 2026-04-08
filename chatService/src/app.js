@@ -32,6 +32,7 @@ const io = new Server(server, {
 });
 
 initializeSocket(io);
+app.set("io", io);
 app.use("/", chatRouter);
 
 async function startChatService() {
