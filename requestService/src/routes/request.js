@@ -54,8 +54,8 @@ requestRouter.post("/invite/send", userAuth, async (req, res) => {
       status: "pending",
     });
 
-    await redisClient.del(`sentRequests:${fromUserId}`);
-    await redisClient.del(`receivedRequests:${toUserId}`);
+    await redisClient.del(`sentRequests:${fromUserId.toString()}`);
+    await redisClient.del(`receivedRequests:${toUserId.toString()}`);
 
     return res.status(201).json({
       message: "Invite sent successfully",
@@ -98,8 +98,8 @@ requestRouter.patch("/respond/:requestId", userAuth, async (req, res) => {
       });
     }
 
-    await redisClient.del(`sentRequests:${request.fromUserId}`);
-    await redisClient.del(`receivedRequests:${request.toUserId}`);
+    await redisClient.del(`sentRequests:${request.fromUserId.toString()}`);
+    await redisClient.del(`receivedRequests:${request.toUserId.toString()}`);
 
     await publishEvent(`request.${status}`, {
       requestId: request._id,
@@ -171,7 +171,6 @@ requestRouter.get("/invites/received", userAuth, async (req, res) => {
 
     const requests = await Request.find({
       toUserId: req.user._id,
-      status: "pending",
     }).sort({ createdAt: -1 });
 
     const responseData = {

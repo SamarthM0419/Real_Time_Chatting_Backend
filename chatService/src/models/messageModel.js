@@ -14,7 +14,12 @@ const messageSchema = new mongoose.Schema(
     },
     text: {
       type: String,
-      required: true,
+    },
+    file: {
+      data: { type: String },        // base64-encoded file content
+      name: { type: String },
+      mimeType: { type: String },
+      size: { type: Number },
     },
     readBy: [
       {

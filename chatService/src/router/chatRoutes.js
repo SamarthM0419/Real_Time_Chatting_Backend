@@ -1,9 +1,15 @@
 const express = require("express");
 const chatRouter = express.Router();
+const multer = require("multer");
 const { userAuth } = require("../middlewares/chatMiddleware");
 const Connection = require("../models/connection");
 const Chat = require("../models/chatModel");
 const { redisClient } = require("../utils/redisClient");
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+});
 
 chatRouter.post("/create-direct", userAuth, async (req, res) => {
   try {
@@ -181,6 +187,74 @@ chatRouter.put("/leave-group", userAuth, async (req, res) => {
     return res.status(200).json({ message: "Successfully left the group", chat });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+chatRouter.get("/my-chats", userAuth, async (req, res) => {
+  try {
+    const userId = req.user._id.toString();
+    const chats = await Chat.find({ participants: userId }).sort({ updatedAt: -1 });
+    return res.status(200).json(chats);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+const Message = require("../models/messageModel");
+
+chatRouter.get("/messages/:chatId", userAuth, async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    
+    // Find all messages for this chat, sorted oldest to newest
+    const messages = await Message.find({ chatId }).sort({ createdAt: 1 });
+    
+    return res.status(200).json(messages);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+chatRouter.post("/send-file", userAuth, upload.single("file"), async (req, res) => {
+  try {
+    const { chatId, text } = req.body;
+    const file = req.file;
+
+    if (!file) return res.status(400).json({ message: "No file provided" });
+    if (!chatId) return res.status(400).json({ message: "chatId is required" });
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) return res.status(404).json({ message: "Chat not found" });
+
+    const isParticipant = chat.participants.some(
+      (id) => id.toString() === req.user._id.toString()
+    );
+    if (!isParticipant) return res.status(403).json({ message: "Not authorized" });
+
+    const message = await Message.create({
+      chatId,
+      senderId: req.user._id,
+      text: text?.trim() || undefined,
+      file: {
+        data: file.buffer.toString("base64"),
+        name: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+      },
+      readBy: [req.user._id],
+    });
+
+    await Chat.findByIdAndUpdate(chatId, { lastMessage: message._id });
+
+    const io = req.app.get("io");
+    io.to(chatId).emit("receiveMessage", message);
+
+    return res.status(201).json(message);
+  } catch (err) {
+    console.error("File upload error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
