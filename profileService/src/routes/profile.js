@@ -53,6 +53,14 @@ profileRouter.put("/patchProfile", userAuth, async (req, res) => {
       throw new Error("Update not allowed");
     }
 
+    const missingFields = ALLOWED_UPDATES.filter(
+      (field) => req.body[field] === undefined || req.body[field] === null || req.body[field] === "",
+    );
+
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
+    }
+
     if (req.body.profilePic) {
       const { profilePic } = req.body;
 
