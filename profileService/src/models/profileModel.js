@@ -15,17 +15,17 @@ const profileSchema = new mongoose.Schema(
     },
     lastName: {
       type: String,
+      required: true,
       minLength: 1,
     },
     about: {
       type: String,
-      default: "Hey there! I am using this chat app.",
+      required: true,
       maxLength: 750,
     },
     profilePic: {
       type: String,
-      default:
-        "https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png",
+      required: true,
       validate(value) {
         if (!validator.isURL(value)) {
           throw new Error("Invalid URL for profile picture");
@@ -34,10 +34,12 @@ const profileSchema = new mongoose.Schema(
     },
     age: {
       type: Number,
+      required: true,
     },
     gender: {
       type: String,
-      enum: ["male", "female", "other","Male","Female"],
+      required: true,
+      enum: ["male", "female", "other", "Male", "Female"],
     },
   },
   {
