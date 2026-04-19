@@ -45,9 +45,15 @@ authRouter.post("/signup", async (req, res) => {
       expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 
-    res
-      .status(201)
-      .json({ message: "User Registered Successfully", userId: user._id });
+    res.status(201).json({
+      message: "User Registered Successfully",
+      data: {
+        _id: savedUser._id,
+        firstName: savedUser.firstName,
+        lastName: savedUser.lastName,
+        emailId: savedUser.emailId,
+      },
+    });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
